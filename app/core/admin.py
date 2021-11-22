@@ -1,19 +1,41 @@
 from django.contrib import admin
-
 from django.urls import path
 from django.shortcuts import render
-from .models import Loan
 from django import forms
-from .models import CashFlow
 from django.contrib import messages
 from django.http import HttpResponseRedirect
+from .loan_calculations import *
 
 
 class CsvImportForm(forms.Form):
     csv_upload = forms.FileField()
 
 
+class CSV:
+
+    def __init__(self, request):
+        self.request = request
+
+    def read_csv(self) -> tuple or HttpResponseRedirect:
+        csv_file = self.request.FILES["csv_upload"]
+        if not csv_file.name.endswith('.csv'):
+            messages.warning(self.request, 'The wrong file type was uploaded. Please upload the CSV file format!')
+            return HttpResponseRedirect(self.request.path_info)
+
+        file_data = csv_file.read().decode("utf-8")
+        csv_data = file_data.split("\n")
+        csv_data = list(filter(None, csv_data))
+        headers = csv_data[0].split(',')
+        rows = csv_data[1:]
+        return headers, rows
+
+
 class LoanAdmin(admin.ModelAdmin):
+
+    def __init__(self, model, admin_site):
+        super().__init__(model, admin_site)
+        self.calculate_loan = LoanCalculations()
+
     list_display = (
         'identifier', 'issue_date', 'total_amount', 'rating', 'maturity_date', 'total_expected_interest_amount',
         'invested_amount', 'investment_date', 'expected_interest_amount', 'is_closed', 'expected_irr', 'realized_irr'
@@ -28,30 +50,34 @@ class LoanAdmin(admin.ModelAdmin):
         new_urls = [path('upload-csv/', self.upload_csv), ]
         return new_urls + urls
 
+    def create_update_loan(self, loan) -> bool:
+        loan['invested_amount'] = self.calculate_loan.get_amount_cash_flow(loan['identifier'])
+        created = Loan.objects.update_or_create(
+            identifier=loan['identifier'],
+            defaults={
+                'total_amount': loan['total_amount'],
+                'issue_date': loan['issue_date'],
+                'rating': loan['rating'],
+                'maturity_date': loan['maturity_date'],
+                'total_expected_interest_amount': loan['total_expected_interest_amount'],
+                'investment_date': self.calculate_loan.get_reference_date(loan['identifier']),
+                'invested_amount': loan['invested_amount'],
+                'expected_interest_amount': float(loan['total_expected_interest_amount']) *
+                                            (float(loan['invested_amount']) / float(loan['total_amount']))
+            }
+        )
+        return True if created else False
+
     def upload_csv(self, request):
         if request.method == "POST":
-            csv_file = request.FILES["csv_upload"]
-
-            if not csv_file.name.endswith('.csv'):
-                messages.warning(request, 'The wrong file type was uploaded. Please upload the CSV file format!')
-                return HttpResponseRedirect(request.path_info)
-
-            file_data = csv_file.read().decode("utf-8")
-            csv_data = file_data.split("\n")
-            csv_data = list(filter(None, csv_data))
-            headers = csv_data[0].split(',')
-            rows = csv_data[1:]
-
+            csv = CSV(request)
+            headers, rows = csv.read_csv()
             for row in rows:
                 line = row.split(',')
-                line = {key: value for key, value in zip(headers, line)}
-
-                Loan.objects.update_or_create(
-                    identifier=line['identifier'],
-                    total_amount=line['total_amount'], issue_date=line['issue_date'], rating=line['rating'],
-                    maturity_date=line['maturity_date'],
-                    total_expected_interest_amount=line['total_expected_interest_amount'],
-                )
+                loan = {key: value for key, value in zip(headers, line)}
+                created = self.create_update_loan(loan)
+                if created:
+                    self.calculate_loan.calculate_xirr_fields(loan['identifier'])
 
             return HttpResponseRedirect('/admin/core/loan')
 
@@ -61,6 +87,11 @@ class LoanAdmin(admin.ModelAdmin):
 
 
 class CashFlowAdmin(admin.ModelAdmin):
+
+    def __init__(self, model, admin_site):
+        super().__init__(model, admin_site)
+        self.calculate_loan = LoanCalculations()
+
     list_display = (
         'loan_identifier', 'reference_date', 'type', 'amount'
     )
@@ -73,31 +104,25 @@ class CashFlowAdmin(admin.ModelAdmin):
         new_urls = [path('upload-csv/', self.upload_csv), ]
         return new_urls + urls
 
+    def create_cash_flow(self, loan) -> bool:
+        created = CashFlow.objects.create(
+            loan_identifier=loan['identifier'],
+            reference_date=loan['reference_date'],
+            type=loan['type'],
+            amount=loan['amount'],
+        )
+        return True if created else False
+
     def upload_csv(self, request):
         if request.method == "POST":
-            csv_file = request.FILES["csv_upload"]
-
-            if not csv_file.name.endswith('.csv'):
-                messages.warning(request, 'The wrong file type was uploaded. Please upload the CSV file format!')
-                return HttpResponseRedirect(request.path_info)
-
-            file_data = csv_file.read().decode("utf-8")
-            csv_data = file_data.split("\n")
-            csv_data = list(filter(None, csv_data))
-            headers = csv_data[0].split(',')
-            rows = csv_data[1:]
-
+            csv = CSV(request)
+            headers, rows = csv.read_csv()
             for row in rows:
                 line = row.split(',')
                 line = {key: value for key, value in zip(headers, line)}
-
-                loan = Loan.objects.get(identifier=line['loan_identifier'])
-                CashFlow.objects.create(
-                    loan_identifier=loan,
-                    reference_date=line['reference_date'],
-                    type=line['type'],
-                    amount=line['amount'],
-                )
+                line['identifier'] = Loan.objects.get(identifier=line['loan_identifier'])
+                self.create_cash_flow(line)
+                self.calculate_loan.close_loan(line['identifier'])
 
             return HttpResponseRedirect('/admin/core/cashflow')
 

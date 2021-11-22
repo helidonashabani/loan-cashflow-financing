@@ -1,0 +1,2 @@
+FUNDING = 'Funding'
+REPAYMENT = 'Repayment'
