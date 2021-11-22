@@ -155,9 +155,11 @@ class CashFlowAdmin(admin.ModelAdmin):
             if not form.is_valid():
                 messages.warning(request, 'Please enter the correct data!')
                 return HttpResponseRedirect(request.path_info)
-            print(request)
+
             loan = self.fetch_data(request)
             self.create_cash_flow(loan)
+            self.calculate_loan.close_loan(loan['identifier'])
+
             messages.success(request, "Cash Flow is created Successfully!")
             return HttpResponseRedirect('/admin/core/cashflow')
 
