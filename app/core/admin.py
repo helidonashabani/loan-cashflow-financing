@@ -5,10 +5,19 @@ from django import forms
 from django.contrib import messages
 from django.http import HttpResponseRedirect
 from .loan_calculations import *
+from datetime import datetime
 
 
 class CsvImportForm(forms.Form):
     csv_upload = forms.FileField()
+
+
+class CashFlowForm(forms.ModelForm):
+    reference_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date'}), required=True)
+
+    class Meta:
+        model = CashFlow
+        exclude = ['type', 'reference_date']
 
 
 class CSV:
@@ -101,7 +110,7 @@ class CashFlowAdmin(admin.ModelAdmin):
 
     def get_urls(self):
         urls = super().get_urls()
-        new_urls = [path('upload-csv/', self.upload_csv), ]
+        new_urls = [path('upload-csv/', self.upload_csv), path('create-repayment/', self.create_repayment), ]
         return new_urls + urls
 
     def create_cash_flow(self, loan) -> bool:
@@ -129,6 +138,32 @@ class CashFlowAdmin(admin.ModelAdmin):
         form = CsvImportForm()
         data = {"form": form}
         return render(request, "admin/core/csv_upload.html", data)
+
+    @staticmethod
+    def fetch_data(request):
+        form = request.POST
+        identifier = Loan.objects.get(identifier=form.get("loan_identifier"))
+        return {'identifier': identifier,
+                'reference_date': datetime.strptime(form.get("reference_date"), '%Y-%m-%d').date(),
+                'type': REPAYMENT.capitalize(),
+                'amount': form.get("amount")}
+
+    def create_repayment(self, request):
+        if request.method == "POST":
+            form = CashFlowForm(request.POST)
+            print(form)
+            if not form.is_valid():
+                messages.warning(request, 'Please enter the correct data!')
+                return HttpResponseRedirect(request.path_info)
+            print(request)
+            loan = self.fetch_data(request)
+            self.create_cash_flow(loan)
+            messages.success(request, "Cash Flow is created Successfully!")
+            return HttpResponseRedirect('/admin/core/cashflow')
+
+        form = CashFlowForm()
+        data = {"form": form}
+        return render(request, "admin/core/create_repayment.html", data)
 
 
 admin.site.register(Loan, LoanAdmin)
