@@ -4,8 +4,10 @@ from django.shortcuts import render
 from django import forms
 from django.contrib import messages
 from django.http import HttpResponseRedirect
+from django.core.exceptions import ObjectDoesNotExist
 from .loan_calculations import *
 from datetime import datetime
+from django.contrib.auth.models import User
 
 
 class CsvImportForm(forms.Form):
@@ -17,7 +19,7 @@ class CashFlowForm(forms.ModelForm):
 
     class Meta:
         model = CashFlow
-        exclude = ['type', 'reference_date']
+        exclude = ['type', 'reference_date', 'created_by']
 
 
 class CSV:
@@ -37,6 +39,20 @@ class CSV:
         headers = csv_data[0].split(',')
         rows = csv_data[1:]
         return headers, rows
+
+
+def get_loan(identifier):
+    try:
+        return Loan.objects.get(identifier=identifier)
+    except ObjectDoesNotExist:
+        return False
+
+
+def get_user(user_id):
+    try:
+        return User.objects.get(id=user_id)
+    except ObjectDoesNotExist:
+        return None
 
 
 class LoanAdmin(admin.ModelAdmin):
@@ -72,7 +88,8 @@ class LoanAdmin(admin.ModelAdmin):
                 'investment_date': self.calculate_loan.get_reference_date(loan['identifier']),
                 'invested_amount': loan['invested_amount'],
                 'expected_interest_amount': float(loan['total_expected_interest_amount']) *
-                                            (float(loan['invested_amount']) / float(loan['total_amount']))
+                                            (float(loan['invested_amount']) / float(loan['total_amount'])),
+                'created_by': loan['created_by']
             }
         )
         return True if created else False
@@ -84,6 +101,7 @@ class LoanAdmin(admin.ModelAdmin):
             for row in rows:
                 line = row.split(',')
                 loan = {key: value for key, value in zip(headers, line)}
+                loan['created_by'] = get_user(request.user.id)
                 created = self.create_update_loan(loan)
                 if created:
                     self.calculate_loan.calculate_xirr_fields(loan['identifier'])
@@ -91,6 +109,7 @@ class LoanAdmin(admin.ModelAdmin):
             return HttpResponseRedirect('/admin/core/loan')
 
         form = CsvImportForm()
+
         data = {"form": form}
         return render(request, "admin/core/csv_upload.html", data)
 
@@ -119,6 +138,7 @@ class CashFlowAdmin(admin.ModelAdmin):
             reference_date=loan['reference_date'],
             type=loan['type'],
             amount=loan['amount'],
+            created_by=loan['created_by']
         )
         return True if created else False
 
@@ -129,20 +149,27 @@ class CashFlowAdmin(admin.ModelAdmin):
             for row in rows:
                 line = row.split(',')
                 line = {key: value for key, value in zip(headers, line)}
-                line['identifier'] = Loan.objects.get(identifier=line['loan_identifier'])
+                line['identifier'] = get_loan(line['loan_identifier'])
+                line['created_by'] = get_user(request.user.id)
+                if not line['identifier']:
+                    messages.warning(request,
+                                     'Loan %s does not exist! Please upload loan csv first!' % line['loan_identifier'])
+                    return HttpResponseRedirect(request.path_info)
+
                 self.create_cash_flow(line)
                 self.calculate_loan.close_loan(line['identifier'])
 
             return HttpResponseRedirect('/admin/core/cashflow')
 
         form = CsvImportForm()
+
         data = {"form": form}
         return render(request, "admin/core/csv_upload.html", data)
 
     @staticmethod
     def fetch_data(request):
         form = request.POST
-        identifier = Loan.objects.get(identifier=form.get("loan_identifier"))
+        identifier = get_loan(form.get("loan_identifier"))
         return {'identifier': identifier,
                 'reference_date': datetime.strptime(form.get("reference_date"), '%Y-%m-%d').date(),
                 'type': REPAYMENT.capitalize(),
@@ -151,16 +178,18 @@ class CashFlowAdmin(admin.ModelAdmin):
     def create_repayment(self, request):
         if request.method == "POST":
             form = CashFlowForm(request.POST)
-            print(form)
+
             if not form.is_valid():
                 messages.warning(request, 'Please enter the correct data!')
                 return HttpResponseRedirect(request.path_info)
 
             loan = self.fetch_data(request)
+            loan['created_by'] = get_user(request.user.id)
+
             self.create_cash_flow(loan)
             self.calculate_loan.close_loan(loan['identifier'])
 
-            messages.success(request, "Cash Flow is created Successfully!")
+            messages.success(request, "Repayment is created Successfully!")
             return HttpResponseRedirect('/admin/core/cashflow')
 
         form = CashFlowForm()

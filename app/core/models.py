@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings
 
 
 class Loan(models.Model):
@@ -14,6 +15,8 @@ class Loan(models.Model):
     is_closed = models.BooleanField(default=False, null=True)
     expected_irr = models.FloatField(null=True)
     realized_irr = models.FloatField(null=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True, on_delete=models.SET_NULL)
+
     objects = models.Manager()
 
     class Meta:
@@ -38,6 +41,7 @@ class CashFlow(models.Model):
 
     type = models.CharField(max_length=50, choices=TYPE_CHOICES)
     amount = models.FloatField()
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True, on_delete=models.SET_NULL)
     objects = models.Manager()
 
     class Meta:

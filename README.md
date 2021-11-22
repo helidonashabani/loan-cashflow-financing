@@ -14,5 +14,5 @@ docker-compose run --rm app python manage.py migrate
 #### Any changes in models run:
 docker-compose run --rm app python manage.py makemigrations
 #### Enter to DB or APP container
-docker-compose exec -it <container_name> (ex: finance_db_1, or finance_app_1)
+docker exec -it <container_name> (ex: finance_db_1, or finance_app_1) /bin/bash (windows: //bin//sh)
 

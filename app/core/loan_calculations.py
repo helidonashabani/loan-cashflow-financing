@@ -16,7 +16,7 @@ class LoanCalculations:
         cash_flow = CashFlow.objects.filter(loan_identifier__exact=loan_identifier, type__iexact=FUNDING).values(
             'amount')
         amount = list(cash_flow)
-        return amount[0]['amount'] if len(amount) > 0 else None
+        return amount[0]['amount'] if len(amount) > 0 else 0
 
     def close_loan(self,loan_identifier):
         details = Loan.objects.filter(identifier=loan_identifier).values('total_amount', 'invested_amount',
