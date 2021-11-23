@@ -23,12 +23,8 @@ class LoanCalculations:
                                                                               'expected_interest_amount')
         ls_details = list(details)
         if len(ls_details) > 0:
-            Loan.objects.filter(identifier=loan_identifier).update(is_closed=1) if ls_details[0][
-                                                                                            'invested_amount'] + \
-                                                                                        ls_details[0][
-                                                                                            'expected_interest_amount'] >= \
-                                                                                        ls_details[0][
-                                                                                            'expected_interest_amount'] else False
+            is_closed = 1 if ls_details[0]['invested_amount'] + ls_details[0]['expected_interest_amount'] >= ls_details[0]['expected_interest_amount'] else 0
+            Loan.objects.filter(identifier=loan_identifier).update(is_closed=is_closed)
 
     def calculate_xirr_fields(self,loan_identifier):
         realized_irr = self.calculate_realized_irr(loan_identifier)

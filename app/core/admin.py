@@ -1,25 +1,12 @@
 from django.contrib import admin
 from django.urls import path
-from django.shortcuts import render
-from django import forms
 from django.contrib import messages
 from django.http import HttpResponseRedirect
-from django.core.exceptions import ObjectDoesNotExist
 from .loan_calculations import *
+from .stastics import *
 from datetime import datetime
 from django.contrib.auth.models import User
-
-
-class CsvImportForm(forms.Form):
-    csv_upload = forms.FileField()
-
-
-class CashFlowForm(forms.ModelForm):
-    reference_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date'}), required=True)
-
-    class Meta:
-        model = CashFlow
-        exclude = ['type', 'reference_date', 'created_by']
+from .forms import CsvImportForm, CashFlowForm
 
 
 class CSV:
@@ -55,11 +42,12 @@ def get_user(user_id):
         return None
 
 
-class LoanAdmin(admin.ModelAdmin):
+class LoanAdmin(admin.ModelAdmin, Statistics):
 
     def __init__(self, model, admin_site):
         super().__init__(model, admin_site)
         self.calculate_loan = LoanCalculations()
+        self.statisics = Statistics()
 
     list_display = (
         'identifier', 'issue_date', 'total_amount', 'rating', 'maturity_date', 'total_expected_interest_amount',
@@ -72,7 +60,7 @@ class LoanAdmin(admin.ModelAdmin):
 
     def get_urls(self):
         urls = super().get_urls()
-        new_urls = [path('upload-csv/', self.upload_csv), ]
+        new_urls = [path('upload-csv/', self.upload_csv), path('get-statistics/', self.statisics.get_statistics), ]
         return new_urls + urls
 
     def create_update_loan(self, loan) -> bool:

@@ -1,0 +1,9 @@
+{% extends 'admin/base.html' %}
+
+{% block content %}
+    <p>Number of Loans: {{ no_loans }}</p>
+    <p>Total investment amount (all loans): {{ total_invested_amount }}</p>
+    <p>Current invested amount (only open loans): {{ current_invested_amount }}</p>
+    <p>Total repaid amount (all loans): {{ total_repaid_amount }}</p>
+    <p>Average Realized IRR: {{ average_irr }}</p>
+{% endblock %}
