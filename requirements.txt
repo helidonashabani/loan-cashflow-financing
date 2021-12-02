@@ -1,2 +1,7 @@
 Django>=3.2.3,<3.3
+djangorestframework>=3.12.4
+django-cors-headers>=3.7
+celery>=5.2.1
+redis>=3.0,<4
 psycopg2>=2.8.6,<2.9
+django-redis>=5.1.0

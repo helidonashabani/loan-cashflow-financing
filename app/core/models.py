@@ -1,5 +1,11 @@
 from django.db import models
 from django.conf import settings
+from django.contrib.auth.models import AbstractUser
+
+
+class User(AbstractUser):
+    is_analyst = models.BooleanField(default=False)
+    is_investor = models.BooleanField(default=False)
 
 
 class Loan(models.Model):

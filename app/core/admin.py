@@ -5,8 +5,9 @@ from django.http import HttpResponseRedirect
 from .loan_calculations import *
 from .stastics import *
 from datetime import datetime
-from django.contrib.auth.models import User
+from .models import User
 from .forms import CsvImportForm, CashFlowForm
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
 
 class CSV:
@@ -187,3 +188,4 @@ class CashFlowAdmin(admin.ModelAdmin):
 
 admin.site.register(Loan, LoanAdmin)
 admin.site.register(CashFlow, CashFlowAdmin)
+admin.site.register(User, BaseUserAdmin)

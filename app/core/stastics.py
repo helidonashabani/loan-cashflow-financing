@@ -1,4 +1,4 @@
-from django.contrib.auth.models import User
+from .models import User
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Count, Sum
 from django.shortcuts import render

@@ -1,5 +1,0 @@
-DB_NAME=financedb
-DB_USER=fintech
-DB_PASS=fintech21
-SECRET_KEY=fintechkey2O21
-ALLOWED_HOSTS=127.0.0.1

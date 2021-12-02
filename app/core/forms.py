@@ -1,5 +1,6 @@
 from django import forms
-from .models import CashFlow
+from .models import CashFlow, User
+from django.contrib.auth.forms import UserCreationForm, UserChangeForm
 
 
 class CsvImportForm(forms.Form):
@@ -12,3 +13,4 @@ class CashFlowForm(forms.ModelForm):
     class Meta:
         model = CashFlow
         exclude = ['type', 'reference_date', 'created_by']
+
