@@ -6,7 +6,8 @@ from . import views
 urlpatterns = [
     path('api/loan/', views.LoanList.as_view()),
     path('api/cashflow/', views.CashFlowList.as_view()),
-    path('api/token-auth/', obtain_auth_token, name='api_token_auth')
+    path('api/token-auth/', obtain_auth_token, name='api_token_auth'),
+    path('api/statistics/', views.StatisticsList.as_view()),
 ]
 
 urlpatterns = format_suffix_patterns(urlpatterns)

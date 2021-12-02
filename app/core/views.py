@@ -1,13 +1,21 @@
+from django.http import HttpResponse
 from rest_framework import status
 from rest_framework import generics
 from rest_framework import filters
 from rest_framework.response import Response
-from .models import Loan, CashFlow
+from .models import Loan, CashFlow, User
 from .serializers import LoanSerializer, CashFlowSerializer
 from .constants import REPAYMENT
 from .loan_calculations import LoanCalculations
 from rest_framework.permissions import IsAuthenticated
 from .permissions import IsInvestor, IsAnalyst
+from rest_framework.views import APIView
+from .stastics import Statistics
+from django.core.cache import cache
+from django.conf import settings
+from django.core.cache.backends.base import DEFAULT_TIMEOUT
+
+CACHE_TTL = getattr(settings, 'CACHE_TTL', DEFAULT_TIMEOUT)
 
 
 class LoanList(generics.ListAPIView):
@@ -51,3 +59,14 @@ class CashFlowList(generics.ListCreateAPIView):
         loan_calculation.close_loan(data['loan_identifier'])
 
 
+class StatisticsList(APIView):
+
+    def get(self, request, format=None):
+        if 'statistics' in cache:
+            statistics = cache.get('statistics')
+            return Response(statistics, status=status.HTTP_201_CREATED)
+        else:
+            statistics = Statistics()
+            result = statistics.fetch_data(request)
+            cache.set('statistics', result, timeout=CACHE_TTL)
+            return Response(result, status=status.HTTP_201_CREATED)

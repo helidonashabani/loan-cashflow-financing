@@ -14,15 +14,19 @@ class Statistics:
         self.user_id = None
 
     def get_statistics(self, request):
+        data = self.fetch_data(request)
+        return render(request, "admin/core/get_statistics.html", data)
+
+    def fetch_data(self, request):
         self.user_id = request.user.id
         data = {
             'no_loans': self.get_total_loans(),
             'total_invested_amount': self.get_total_invested_amount(),
             'current_invested_amount': self.get_current_invested_amount(),
             'total_repaid_amount': self.get_total_repaid_amount(),
-            'average_irr': self.get_average_irr()
+            # 'average_irr': self.get_average_irr()
         }
-        return render(request, "admin/core/get_statistics.html", data)
+        return data
 
     def get_total_loans(self):
         amount = Loan.objects.filter(created_by=self.get_user()).values('created_by').annotate(
