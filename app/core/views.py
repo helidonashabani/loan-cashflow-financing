@@ -7,23 +7,27 @@ from .serializers import LoanSerializer, CashFlowSerializer
 from .constants import REPAYMENT
 from .loan_calculations import LoanCalculations
 from rest_framework.permissions import IsAuthenticated
-from .permissions import IsInvestor,IsAnalyst
+from .permissions import IsInvestor, IsAnalyst
+
 
 class LoanList(generics.ListAPIView):
-
-    permission_classes = (IsAuthenticated, )
+    permission_classes = (IsAuthenticated,)
+    permission_classes_by_action = {'create': [IsInvestor],
+                                    'list': [IsAnalyst]}
     search_fields = [
         'identifier', 'issue_date', 'total_amount', 'rating', 'maturity_date', 'total_expected_interest_amount',
         'invested_amount', 'investment_date', 'expected_interest_amount', 'is_closed', 'expected_irr', 'realized_irr'
     ]
+
     filter_backends = (filters.SearchFilter,)
     queryset = Loan.objects.all()
     serializer_class = LoanSerializer
 
 
 class CashFlowList(generics.ListCreateAPIView):
-
-    permission_classes = (IsAuthenticated, )
+    permission_classes = (IsAuthenticated,)
+    permission_classes_by_action = {'create': [IsInvestor],
+                                    'list': [IsAnalyst]}
     search_fields = [
         'loan_identifier__identifier', 'reference_date', 'type', 'amount'
     ]
@@ -45,4 +49,5 @@ class CashFlowList(generics.ListCreateAPIView):
     def close_loan(self, data):
         loan_calculation = LoanCalculations()
         loan_calculation.close_loan(data['loan_identifier'])
+
 

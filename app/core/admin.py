@@ -6,7 +6,7 @@ from .loan_calculations import *
 from .stastics import *
 from datetime import datetime
 from .models import User
-from .forms import CsvImportForm, CashFlowForm
+from .forms import *
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
 
@@ -186,6 +186,32 @@ class CashFlowAdmin(admin.ModelAdmin):
         return render(request, "admin/core/create_repayment.html", data)
 
 
+class UserAdmin(BaseUserAdmin):
+    form = UserChangeForm
+    add_form = UserCreationForm
+
+    list_display = BaseUserAdmin.list_display + ('is_analyst', 'is_investor',)
+
+    fieldsets = BaseUserAdmin.fieldsets + (
+        ('Permissions', {'fields': ('is_analyst', 'is_investor',)}),
+    )
+    add_fieldsets = (
+        (None, {
+            'classes': ('wide',),
+            'fields': ('username', 'password1', 'password2'),
+        }),
+    )
+
+    def is_analyst(self, obj):
+        return User.objects.get(my_field=obj).is_analyst()
+
+    def is_investor(self, obj):
+        return User.objects.get(my_field=obj).is_investor()
+
+    is_analyst.boolean = False
+    is_investor.boolean = False
+
+
 admin.site.register(Loan, LoanAdmin)
 admin.site.register(CashFlow, CashFlowAdmin)
-admin.site.register(User, BaseUserAdmin)
+admin.site.register(User, UserAdmin)
