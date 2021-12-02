@@ -49,3 +49,12 @@ def irr(initial_investment, cashflows, precision):
             rate -= 0.0001
 
     return rate
+
+
+def read_csv(file):
+    file_data = file.read().decode("utf-8")
+    csv_data = file_data.split("\n")
+    csv_data = list(filter(None, csv_data))
+    headers = csv_data[0].split(',')
+    rows = csv_data[1:]
+    return headers, rows

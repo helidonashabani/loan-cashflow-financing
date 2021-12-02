@@ -1,8 +1,8 @@
-from .models import User
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Count, Sum
 from django.shortcuts import render
 from .constants import REPAYMENT, FUNDING
+from .controllers import UserController
 from .utils import irr
 
 from .models import *
@@ -49,7 +49,10 @@ class Statistics:
         return amount[0]['invested_amount'] if len(amount) > 0 else 0
 
     def get_average_irr(self):
-        invested_amounts = CashFlow.objects.select_related('loan_identifier').filter(loan_identifier__is_closed=1, created_by=self.get_user(), type__iexact=FUNDING).values('amount')
+        invested_amounts = CashFlow.objects.select_related('loan_identifier').filter(loan_identifier__is_closed=1,
+                                                                                     created_by=self.get_user(),
+                                                                                     type__iexact=FUNDING).values(
+            'amount')
 
         if len(list(invested_amounts)) > 0:
             cash_flows = [amount['amount'] for amount in list(invested_amounts)]
@@ -60,7 +63,5 @@ class Statistics:
         return rate
 
     def get_user(self):
-        try:
-            return User.objects.get(id=self.user_id)
-        except ObjectDoesNotExist:
-            return None
+        user = UserController()
+        return user.get_user(self.user_id)

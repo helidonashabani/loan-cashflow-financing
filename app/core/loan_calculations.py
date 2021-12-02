@@ -1,34 +1,12 @@
 from .models import Loan
 from .models import CashFlow
 from .utils import xirr
-from .constants import FUNDING, REPAYMENT
+from .constants import REPAYMENT
 
 
 class LoanCalculations:
 
-    def get_reference_date(self, loan_identifier):
-        cash_flow = CashFlow.objects.filter(loan_identifier__exact=loan_identifier, type__iexact=FUNDING).values(
-            'reference_date')
-        reference_date = list(cash_flow)
-        return reference_date[0]['reference_date'] if len(reference_date) > 0 else None
-
-    def get_amount_cash_flow(self, loan_identifier):
-        cash_flow = CashFlow.objects.filter(loan_identifier__exact=loan_identifier, type__iexact=FUNDING).values(
-            'amount')
-        amount = list(cash_flow)
-        return amount[0]['amount'] if len(amount) > 0 else 0
-
-    def close_loan(self,loan_identifier):
-        details = Loan.objects.filter(identifier=loan_identifier).values('total_amount', 'invested_amount',
-                                                                              'expected_interest_amount')
-        ls_details = list(details)
-        if len(ls_details) > 0:
-            is_closed = 1 if float(ls_details[0]['invested_amount'] or 0) + float(ls_details[0]['expected_interest_amount'] or 0) >= float(ls_details[0]['expected_interest_amount'] or 0) else 0
-            Loan.objects.filter(identifier=loan_identifier).update(is_closed=is_closed)
-
-    def calculate_xirr_fields(self,loan_identifier):
-        realized_irr = self.calculate_realized_irr(loan_identifier)
-        expected_irr = self.calculate_expected_irr(loan_identifier)
+    def update_xirr_fields(self,loan_identifier,realized_irr, expected_irr):
         Loan.objects.filter(identifier=loan_identifier).update(realized_irr=round(realized_irr, 4),
                                                                     expected_irr=round(expected_irr, 4))
 
