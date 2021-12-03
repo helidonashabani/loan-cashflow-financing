@@ -16,7 +16,7 @@ docker-compose run --rm app python manage.py makemigrations
 #### Enter to DB or APP container
 docker exec -it <container_name> (ex: finance_db_1, or finance_app_1) /bin/bash (windows: //bin//sh)
 
-#### Technologies:
+## Technologies:
 * Django
 * Django Rest-Framework
 * Redis
