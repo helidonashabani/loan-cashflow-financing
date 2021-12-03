@@ -13,6 +13,7 @@ from .statistics import Statistics
 from django.core.cache import cache
 from django.conf import settings
 from django.core.cache.backends.base import DEFAULT_TIMEOUT
+from .tasks import upload_loan_csv,upload_cashflow_csv
 from .utils import read_csv
 
 CACHE_TTL = getattr(settings, 'CACHE_TTL', DEFAULT_TIMEOUT)
@@ -68,27 +69,8 @@ class UploadLoan(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         csv_file = request.FILES.get('upload_csv')
         headers, rows = read_csv(csv_file)
-        for row in rows:
-            line = row.split(',')
-            loan = {key: value for key, value in zip(headers, line)}
-            loan['created_by'] = self.get_user(request.user.id)
-            created = self.create_update_loan(loan)
-            if created:
-                self.calculate_xirr(loan['identifier'])
-
-        return Response('Uploaded Successfully', status=status.HTTP_201_CREATED)
-
-    def get_user(self, user_id):
-        user = UserController()
-        return user.get_user(user_id)
-
-    def create_update_loan(self,loan):
-        loan = LoanController()
-        return loan.create_update_loan(loan)
-
-    def calculate_xirr(self, loan_identifier):
-        loan = LoanController()
-        return loan.calculate_xirr(identifier=loan_identifier)
+        task = upload_loan_csv.delay({"headers":headers,"rows":rows, "user_id":request.user.id})
+        return Response({"message":"Uploaded successfully","task_id":task.id}, status=status.HTTP_201_CREATED)
 
 
 class UploadCashFlow(generics.CreateAPIView):
@@ -100,34 +82,8 @@ class UploadCashFlow(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         csv_file = request.FILES.get('upload_csv')
         headers, rows = read_csv(csv_file)
-        for row in rows:
-            line = row.split(',')
-            line = {key: value for key, value in zip(headers, line)}
-            line['identifier'] = self.get_loan(line['loan_identifier'])
-            line['created_by'] = self.get_user(request.user.id)
-            if not line['identifier']:
-                return Response('Loan %s does not exist! Please upload loan csv first!' % line['loan_identifier'],
-                                status=status.HTTP_400_BAD_REQUEST)
-            self.create_cash_flow(line)
-            self.close_loan(line['identifier'])
-        return Response('Uploaded Successfully', status=status.HTTP_201_CREATED)
-
-    def create_cash_flow(self, loan):
-        cash_flow = CashFlowController()
-        cash_flow.create_cash_flow(loan)
-
-    def close_loan(self, loan_identifier):
-        loan = LoanController()
-        loan.close_loan(loan_identifier)
-
-    def get_loan(self, identifier):
-        loan = LoanController()
-        return loan.get_loan(identifier)
-
-    def get_user(self, user_id):
-        user = UserController()
-        return user.get_user(user_id)
-
+        task = upload_cashflow_csv.delay({"headers":headers,"rows":rows, "user_id":request.user.id})
+        return Response({"message":"Uploaded successfully","task_id":task.id}, status=status.HTTP_201_CREATED)
 
 class StatisticsList(APIView):
 
@@ -140,4 +96,3 @@ class StatisticsList(APIView):
             result = statistics.fetch_data(request)
             cache.set('statistics', result, timeout=CACHE_TTL)
             return Response(result, status=status.HTTP_201_CREATED)
-
