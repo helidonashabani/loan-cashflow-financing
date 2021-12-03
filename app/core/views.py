@@ -13,7 +13,7 @@ from .statistics import Statistics
 from django.core.cache import cache
 from django.conf import settings
 from django.core.cache.backends.base import DEFAULT_TIMEOUT
-from .tasks import upload_loan_csv,upload_cashflow_csv
+from .tasks import upload_loan_csv,upload_cashflow_csv,invalidate_cache
 from .utils import read_csv
 
 CACHE_TTL = getattr(settings, 'CACHE_TTL', DEFAULT_TIMEOUT)
@@ -70,6 +70,8 @@ class UploadLoan(generics.CreateAPIView):
         csv_file = request.FILES.get('upload_csv')
         headers, rows = read_csv(csv_file)
         task = upload_loan_csv.delay({"headers":headers,"rows":rows, "user_id":request.user.id})
+        invalidate_cache.delay('statistics')
+
         return Response({"message":"Uploaded successfully","task_id":task.id}, status=status.HTTP_201_CREATED)
 
 
@@ -83,7 +85,9 @@ class UploadCashFlow(generics.CreateAPIView):
         csv_file = request.FILES.get('upload_csv')
         headers, rows = read_csv(csv_file)
         task = upload_cashflow_csv.delay({"headers":headers,"rows":rows, "user_id":request.user.id})
+        invalidate_cache.delay('statistics')
         return Response({"message":"Uploaded successfully","task_id":task.id}, status=status.HTTP_201_CREATED)
+
 
 class StatisticsList(APIView):
 

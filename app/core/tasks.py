@@ -1,7 +1,7 @@
 from celery import shared_task
 
 from .controllers import UserController, LoanController, CashFlowController
-
+from django.core.cache import cache
 
 @shared_task
 def upload_loan_csv(data):
@@ -31,6 +31,10 @@ def upload_cashflow_csv(data):
         create_cash_flow(line)
         close_loan(line['identifier'])
 
+@shared_task
+def invalidate_cache(key):
+    if key in cache:
+        cache.delete(key)
 
 def get_user(user_id):
     user = UserController()
